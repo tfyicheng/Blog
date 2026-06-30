@@ -1,0 +1,1 @@
+import{_ as t,c as o,b as r,r as a,o as n}from"./app-BeoODxGf.js";const c={};function s(l,_){const e=a("About");return n(),o("div",null,[r(e)])}const m=t(c,[["render",s]]),p=JSON.parse('{"path":"/pages/other/other.html","title":"自定义页面","lang":"en-US","frontmatter":{"title":"自定义页面"},"headers":[],"git":{},"filePathRelative":"pages/other/other.md"}');export{m as comp,p as data};

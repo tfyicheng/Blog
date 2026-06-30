@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>好评生成器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #007AFF;
+            --danger-color: #FF3B30;
+            --success-color: #34C759;
+            --bg-color: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-color: #1c1c1e;
+        }
+
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+        }
+
+        h2 {
+            margin: 0 0 15px 0;
+            font-size: 1rem;
+            text-align: center;
+            color: #8e8e93;
+        }
+
+        /* 选项样式 */
+        .options-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            gap: 8px;
+        }
+
+        .option-item {
+            flex: 1;
+        }
+
+        .option-item input {
+            display: none;
+        }
+
+        .option-item label {
+            display: block;
+            padding: 10px 0;
+            background: #f2f2f7;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .option-item input:checked+label {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* 输出区域 */
+        #result-area {
+            width: 100%;
+            min-height: 100px;
+            background: #f9f9fb;
+            border: 1px solid #e5e5ea;
+            border-radius: 12px;
+            padding: 12px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #3a3a3c;
+            /* 确保在手机上可以被选中 */
+            user-select: all;
+            -webkit-user-select: all;
+        }
+
+        .btn-stack {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-main {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-sub {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: #fff1f0;
+            color: var(--danger-color);
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* 列表样式 */
+        .input-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .phrase-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+        }
+
+        .phrase-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.85rem;
+        }
+
+        .del-btn {
+            color: var(--danger-color);
+            padding: 0 5px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: none;
+            z-index: 999;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <h2>好评生成器</h2>
+        <div class="options-group">
+            <input type="radio" name="len" id="l20" value="20" checked><label for="l20" class="option-item">20字</label>
+            <input type="radio" name="len" id="l30" value="30"><label for="l30" class="option-item">30字</label>
+            <input type="radio" name="len" id="l40" value="40"><label for="l40" class="option-item">40字</label>
+            <input type="radio" name="len" id="l50" value="50"><label for="l50" class="option-item">50字</label>
+        </div>
+        <div id="result-area">点击生成，获取内容...</div>
+        <div class="btn-stack">
+            <button class="btn-main" onclick="generate()">生成好评</button>
+            <button id="copyBtn" class="btn-sub" data-clipboard-target="#result-area">一键复制</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>短句管理</h2>
+        <div class="input-group">
+            <input type="text" id="newPhrase" placeholder="新短句...">
+            <button class="btn-main" onclick="addPhrase()">添加</button>
+        </div>
+        <div class="phrase-list" id="phraseList"></div>
+        <button class="btn-danger" onclick="resetLibrary()">重置库</button>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const STORAGE_KEY = 'review_db_v2';
+        const DEFAULTS = ["外卖收到了，看着挺好的，与商品图的完全一致。",
+            "送货速度非常快，包装非常仔细、严实，东西也很好吃。",
+            "很满意的一次购物，超级好吃，推荐购买。",
+            "好吃不贵，口感不错。",
+            "真心觉得不错，下次还会再来买的。",
+            "分量好多，也很好吃，强烈推荐。",
+            "同事推荐的，真心不错，真的美味。",
+            "这种品质这个价格真的很难得，朋友都说好吃。",
+            "到手真的，完全超出了我的预期。",
+            "没想到那么好吃，绝了！",
+            "色香味俱全！",
+            "量大管饱！",
+            "墙裂推荐！",
+            "挺好吃的！",
+            "不错！",
+            "真赞！",
+            "味道绝绝子，一口下去直接封神！",
+            "色香味俱全，比实体店还好吃！",
+            "盲点不踩雷，这个菜我可以回购一万次！",
+            "外卖之光！",
+            "味道正宗，分量也足，爱了爱了。",
+            "包装严实，细节满分。",
+            "这家店已经成为我的食堂了，每周必点。",
+            "被惊艳到了，宝藏小店！",
+            "绝对好评！",
+            "五星好评！",
+            "味道一级棒，服务也很好，强烈推荐！",
+            "好评如潮，物超所值！",
+            "味道鲜美，分量十足，性价比高！",
+            "服务态度好，送餐速度快，值得信赖！",
+            "好吃到爆！",
+            "老板都问我哪里点的,",
+            "口感、质量、服务一如既往的好！",
+            "值得尝一下，",
+            "诶呦，不错哦。"];
+        let phrases = JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULTS;
+
+        function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(phrases)); render(); }
+        function render() {
+            document.getElementById('phraseList').innerHTML = phrases.map((t, i) =>
+                `<div class="phrase-item"><span>${t}</span><span class="del-btn" onclick="removeP(${i})">删除</span></div>`
+            ).join('');
+        }
+
+        function addPhrase() {
+            const val = document.getElementById('newPhrase').value.trim();
+            if (val) { phrases.unshift(val); document.getElementById('newPhrase').value = ''; save(); }
+        }
+        function removeP(i) { phrases.splice(i, 1); save(); }
+        function resetLibrary() { if (confirm("确定重置？")) { phrases = [...DEFAULTS]; save(); } }
+
+        function generate() {
+            const min = parseInt(document.querySelector('input[name="len"]:checked').value);
+            let res = "";
+            let pool = [...phrases].sort(() => Math.random() - 0.5);
+            for (let s of pool) { res += s; if (res.length >= min) break; }
+            while (res.length < min) { res += phrases[Math.floor(Math.random() * phrases.length)]; }
+            document.getElementById('result-area').innerText = res;
+        }
+
+        // --- 核心修复：初始化 ClipboardJS ---
+        const clipboard = new ClipboardJS('#copyBtn');
+
+        clipboard.on('success', function (e) {
+            showToast("复制成功！");
+            e.clearSelection();
+        });
+
+        clipboard.on('error', function (e) {
+            showToast("复制失败，请长按文本手动复制");
+        });
+
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m; t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 1500);
+        }
+
+        render();
+    </script>
+</body>
+
+</html>
